@@ -1,2 +1,2 @@
 # Bouncer
- Bouncer is 2D pong game
+ Bouncer is a brick breaker game.
