@@ -1,10 +1,13 @@
 # python3 - Bouncer is 2D game where you bounce ball of a square to destroy other sqares
 
 import pygame. time, random
-
+from os import path
+#find path to directories
+font_dir = path.join(path.dirname(__file__), 'fonts')
+img_dir = path.join(path.dirname(__file__), 'imgs')
 # defining constants
-WIDTH = 600
-HEIGHT = 450
+WIDTH = 400
+HEIGHT = 550
 FPS = 60
 
 # defining colors
@@ -21,21 +24,22 @@ LIGHTSEAGREEN = (32,178,170)
 CADETBLUE = (95,158,160)
 MORON = (128, 0, 0)
 DARKRED = (139, 0, 0)
+KHAKI = (238,232,170)
+SILVER = (192,192,192)
+DIMGRAY = (105,105,105)
+DARKBLUE = (0,0,139)
+MIDNIGHTBLUE = (25,25,112)
 
-# initialization of pygame, screen, clock, setting caption and stuff..
-pygame.init()
-clock = pygame.time.Clock()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption('Bouncer')
-running = True
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.Surface((60, 10))
-        self.image.fill(GREEN)
+        self.image = paddle
+        self.image.set_colorkey(BLACK)
+        # self.image = pygame.Surface((60, 10))
+        # self.image.fill(DARKGRAY)
         self.rect = self.image.get_rect()
-        self.rect.center = (round(WIDTH / 2), 400)
+        self.rect.center = (round(WIDTH / 2), 540)
         self.speedx = 0
     
     def update(self):
@@ -54,38 +58,41 @@ class Player(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.Surface((50, 15))
+        self.block_lives = random.choice(enemies_types) 
+        # self.block_color = WHITE
+        # self.image.fill(self.block_color)
+        if self.block_lives == 1:
+            self.image = gray_brick
+        elif self.block_lives == 2:
+            self.image = blue_brick
+        else:
+            self.image = yellow_brick 
+ 
+        self.image.set_colorkey(BLACK)
         self.rect = self.image.get_rect()
         self.rect.x = round(x)
-        self.rect.y = round(y)
-        self.block_color = random.choice(enemies_types) 
-        self.image.fill(self.block_color)
-        if self.block_color == WHITE:
-            self.lives = 1
-        elif self.block_color == RED:
-            self.lives = 2
-        else:
-            self.lives = 3 
-    def update(self):
-        if self.lives == 1:
-            self.image.fill(WHITE)
-        if self.lives == 2: 
-            self.image.fill(RED)
-        if self.lives == 3: 
-            self.image.fill(BLUE)
+        self.rect.y = round(y)      
         
+    
+    def update(self):
+        if self.block_lives == 1:
+            self.image = gray_brick
+        if self.block_lives == 2: 
+            self.image = blue_brick
+       
 class Ball(pygame.sprite.Sprite):
     
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
+        # self.image = ball
         self.image = pygame.Surface((14, 14))
-        self.image.fill(WHITE)
+        self.image.fill(BLACK)
         self.image.set_colorkey(BLACK)
         self.rect = self.image.get_rect()
-        pygame.draw.circle(self.image, RED, (7, 7), 7)
+        pygame.draw.circle(self.image, YELLOW, (7, 7), 7)
         self.rect.center = (round(x), round(y))
-        self.speedx = 3
-        self.speedy = 3
+        self.speedx = 4
+        self.speedy = 4
         self.radius = 7
         pygame.draw.circle(self.image, WHITE, self.rect.center, self.radius, 2)
 
@@ -99,54 +106,113 @@ class Ball(pygame.sprite.Sprite):
         if self.rect.left < 0:
             self.speedx *= -1
 
-def game_loop():
-    # defining what variables are global
-    global running
+def display_text_arbitraryfont(text, font, color, x, y):
+    text_surface = font.render(text, True, color)
+    text_rect = text_surface.get_rect()
+    text_rect.center = (round(x), round(y))
+    screen.blit(text_surface, text_rect)
 
-    # all sprites will be added to the group 
-    all_sprites = pygame.sprite.Group()
-    player = Player()
-    all_sprites.add(player)
-    ball = Ball(random.randint(player.rect.x, player.rect.x + player.rect.width / 2), random.randint(300, player.rect.y - 20))
-    all_sprites.add(ball)
-    enemies = pygame.sprite.Group()
-
+def display_enemies(all_sprites, enemies):
     for j in range (0, 12):
-        for i in range(0, 11):
+        for i in range(0, 7):
             # let there be 2 pixels space between enemies
-            # enemies start at x = 15, and y = 20
-            enemies.add(Enemy(15 + i * 52, 20 + 17 * j))
+            # enemies start at x = 1, and y = 2
+            enemies.add(Enemy(1 + i * 57, 2 + 30 * j))
 
     all_sprites.add(enemies)
 
+def game_outro(score):
+    # this will appear when you die
+    global game_over
+    while game_over:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_SPACE:
+                    game_loop()
+
+        screen.fill(CADETBLUE)
+        display_text_arbitraryfont('sadly you died', ka1_font2, DARKRED, WIDTH/2 , 100)
+        display_text_arbitraryfont('your score was ' + str(score), ka1_font2, MORON, WIDTH/2 - 5, 200)
+        display_text_arbitraryfont('press SPACE key to start again', ka1_font3, DARKBLUE, WIDTH/2, 370)
+        
+    
+        pygame.display.flip()
+
+def game_loop():
+    # defining what variables are global
+    global running
+    global score
+    global game_over
+    # all sprites will be added to the group 
+    score = 0
+    all_sprites = pygame.sprite.Group()
+    player = Player()
+    all_sprites.add(player)
+    ball = Ball(random.randint(player.rect.x, player.rect.x + player.rect.width / 2), random.randint(400, player.rect.y - 20))
+    all_sprites.add(ball)
+    enemies = pygame.sprite.Group()
+    display_enemies(all_sprites, enemies)
+
     while running:
         clock.tick(FPS)
-        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
         # if ball goes bellow bottom edge you will
         if ball.rect.top > HEIGHT:
-            running = False
+            game_over = True
+            game_outro(score)
+
         # player collison with the ball
         if player.rect.colliderect(ball.rect):
+            ball.speedy *= -1
+        if player.rect.contains(ball.rect):
             ball.speedy *= -1 
         # ball collision with the enemies
         hits = pygame.sprite.spritecollide(ball, enemies, False, pygame.sprite.collide_circle)
         for hit in hits:
-            if hit.lives == 1: 
+            if hit.block_lives == 1: 
                 hit.kill()
             else:
-                hit.lives -= 1
-                
+                hit.block_lives -= 1
+            score += 1
             ball.speedy *= -1
+        # empty sprite group is considered false
+        if not enemies and ball.rect.top > 360:
+            display_enemies(all_sprites, enemies)
         #update
         all_sprites.update()
         #draw/render
-        screen.fill(BLACK)
+        screen.fill(MIDNIGHTBLUE)
+        display_text_arbitraryfont('SCORE ' + str(score), ka1_font, DIMGRAY, 200, 420)
         all_sprites.draw(screen)
         pygame.display.flip()
-    
-enemies_types = [WHITE, RED, BLUE]
+
+# initialization of pygame, screen, clock, setting caption and stuff..
+pygame.init()
+pygame.font.init()
+clock = pygame.time.Clock()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption('Bouncer')
+# loading fonts
+ka1_font = pygame.font.Font(path.join(font_dir, 'ka1.ttf'), 50)
+# same font different size
+ka1_font2 = pygame.font.Font(path.join(font_dir, 'ka1.ttf'), 28)
+ka1_font3 = pygame.font.Font(path.join(font_dir, 'ka1.ttf'), 15)
+# loading images
+paddle = pygame.image.load(path.join(img_dir, 'paddleBlu.png')).convert()
+blue_brick = pygame.image.load(path.join(img_dir,'element_blue_rectangle_glossy.png')).convert()
+yellow_brick = pygame.image.load(path.join(img_dir, 'element_yellow_rectangle_glossy.png')).convert()
+gray_brick = pygame.image.load(path.join(img_dir, 'element_grey_rectangle_glossy.png')).convert()
+# 1, 2, 3 coresponds to brick lives
+enemies_imgs = [blue_brick, yellow_brick, gray_brick]
+enemies_types = [1, 2, 3]
+#global variables of very importance 
+score = 0 
+running = True
+game_over = False
+
 game_loop()
 pygame.quit()
