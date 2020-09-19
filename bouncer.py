@@ -1,5 +1,5 @@
 # python3 - Bouncer is 2D game where you bounce ball of a square to destroy other sqares
-
+# # Art by Kenney.nl / (www.kenney.nl)
 import pygame. time, random
 from os import path
 #find path to directories
@@ -9,7 +9,8 @@ img_dir = path.join(path.dirname(__file__), 'imgs')
 WIDTH = 400
 HEIGHT = 550
 FPS = 60
-
+# 4000 ticks is 4 seconds
+POWERUP_TIME = 4000
 # defining colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -41,24 +42,45 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (round(WIDTH / 2), 540)
         self.speedx = 0
-    
+        self.powerup_started = False
+        # zero is just initial number
+        self.powerup_start = 0
+
+    def powerup(self):
+        self.powerup_start = pygame.time.get_ticks()
+        self.powerup_started = True
+
     def update(self):
         self.speedx = 0
         keypressed = pygame.key.get_pressed()
-        if keypressed[pygame.K_LEFT]:
-            self.speedx = -5
-        if keypressed[pygame.K_RIGHT]:
-            self.speedx = 5
-        if self.rect.left < 0:
-            self.rect.left = 0
-        if self.rect.right > WIDTH:
-            self.rect.right = WIDTH
+        if self.powerup_started:
+            if keypressed[pygame.K_LEFT]:
+                self.speedx = -8
+            if keypressed[pygame.K_RIGHT]:
+                self.speedx = 8
+            if self.rect.left < 0:
+                self.rect.left = 0
+            if self.rect.right > WIDTH:
+                self.rect.right = WIDTH
+        else:
+            if keypressed[pygame.K_LEFT]:
+                self.speedx = -5
+            if keypressed[pygame.K_RIGHT]:
+                self.speedx = 5
+            if self.rect.left < 0:
+                self.rect.left = 0
+            if self.rect.right > WIDTH:
+                self.rect.right = WIDTH
+
         self.rect.x += self.speedx
+        if pygame.time.get_ticks() - self.powerup_start > POWERUP_TIME:
+            self.powerup_started = False
+
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
-        self.block_lives = random.choice(enemies_types) 
+        self.block_lives = random.choice(enemies_types)
         # self.block_color = WHITE
         # self.image.fill(self.block_color)
         if self.block_lives == 1:
@@ -66,22 +88,22 @@ class Enemy(pygame.sprite.Sprite):
         elif self.block_lives == 2:
             self.image = blue_brick
         else:
-            self.image = yellow_brick 
- 
+            self.image = yellow_brick
+
         self.image.set_colorkey(BLACK)
         self.rect = self.image.get_rect()
         self.rect.x = round(x)
-        self.rect.y = round(y)      
-        
-    
+        self.rect.y = round(y)
+
+
     def update(self):
         if self.block_lives == 1:
             self.image = gray_brick
-        if self.block_lives == 2: 
+        if self.block_lives == 2:
             self.image = blue_brick
-       
+
 class Ball(pygame.sprite.Sprite):
-    
+
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
         # self.image = ball
@@ -98,13 +120,27 @@ class Ball(pygame.sprite.Sprite):
 
     def update(self):
         self.rect.x += self.speedx
-        self.rect.y += self.speedy 
-        if self.rect.top <= 0: 
+        self.rect.y += self.speedy
+        if self.rect.top <= 0:
             self.speedy *= -1
         if self.rect.right > WIDTH:
             self.speedx *= -1
         if self.rect.left < 0:
             self.speedx *= -1
+
+class Powerup(pygame.sprite.Sprite):
+    def __init__(self, center):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = powerup
+        self.image.set_colorkey(BLACK)
+        self.rect = self.image.get_rect()
+        self.rect.center = center
+        self.powup_speedy = 3
+
+    def update(self):
+        self.rect.y += self.powup_speedy
+        if self.rect.top > HEIGHT:
+            self.kill()
 
 def display_text_arbitraryfont(text, font, color, x, y):
     text_surface = font.render(text, True, color)
@@ -136,8 +172,8 @@ def game_outro(score):
         display_text_arbitraryfont('sadly you died', ka1_font2, DARKRED, WIDTH/2 , 100)
         display_text_arbitraryfont('your score was ' + str(score), ka1_font2, MORON, WIDTH/2 - 5, 200)
         display_text_arbitraryfont('press SPACE key to start again', ka1_font3, DARKBLUE, WIDTH/2, 370)
-        
-    
+
+
         pygame.display.flip()
 
 def game_loop():
@@ -145,18 +181,21 @@ def game_loop():
     global running
     global score
     global game_over
-    # all sprites will be added to the group 
+    # all sprites will be added to the group
     score = 0
     all_sprites = pygame.sprite.Group()
+    enemies = pygame.sprite.Group()
+    powerups = pygame.sprite.Group()
     player = Player()
     all_sprites.add(player)
     ball = Ball(random.randint(player.rect.x, player.rect.x + player.rect.width / 2), random.randint(400, player.rect.y - 20))
     all_sprites.add(ball)
-    enemies = pygame.sprite.Group()
     display_enemies(all_sprites, enemies)
 
+    # main loop
     while running:
         clock.tick(FPS)
+        # processing events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -169,16 +208,26 @@ def game_loop():
         if player.rect.colliderect(ball.rect):
             ball.speedy *= -1
         if player.rect.contains(ball.rect):
-            ball.speedy *= -1 
+            ball.speedy *= -1
         # ball collision with the enemies
-        hits = pygame.sprite.spritecollide(ball, enemies, False, pygame.sprite.collide_circle)
+        # hits = pygame.sprite.spritecollide(ball, enemies, False, pygame.sprite.collide_circle)
+        hits = pygame.sprite.spritecollide(ball, enemies, False)
         for hit in hits:
-            if hit.block_lives == 1: 
+            if hit.block_lives == 1:
+                if random.random() > 0.98:
+                    powup = Powerup(hit.rect.center)
+                    all_sprites.add(powup)
+                    powerups.add(powup)
                 hit.kill()
             else:
                 hit.block_lives -= 1
             score += 1
             ball.speedy *= -1
+
+        # ball collision with powerup
+        hits = pygame.sprite.spritecollide(player, powerups, True, pygame.sprite.collide_circle)
+        for hit in hits:
+            player.powerup()
         # empty sprite group is considered false
         if not enemies and ball.rect.top > 360:
             display_enemies(all_sprites, enemies)
@@ -206,11 +255,12 @@ paddle = pygame.image.load(path.join(img_dir, 'paddleBlu.png')).convert()
 blue_brick = pygame.image.load(path.join(img_dir,'element_blue_rectangle_glossy.png')).convert()
 yellow_brick = pygame.image.load(path.join(img_dir, 'element_yellow_rectangle_glossy.png')).convert()
 gray_brick = pygame.image.load(path.join(img_dir, 'element_grey_rectangle_glossy.png')).convert()
+powerup = pygame.image.load(path.join(img_dir, 'powerupYellow_bolt.png')).convert()
 # 1, 2, 3 coresponds to brick lives
 enemies_imgs = [blue_brick, yellow_brick, gray_brick]
 enemies_types = [1, 2, 3]
-#global variables of very importance 
-score = 0 
+#global variables of very importance
+score = 0
 running = True
 game_over = False
 
