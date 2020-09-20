@@ -1,2 +1,2 @@
 # Bouncer
- Bouncer is a brick breaker game.
+ Bouncer is a brick breaker type game.
