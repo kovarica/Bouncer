@@ -117,10 +117,29 @@ class Ball(pygame.sprite.Sprite):
         self.speedy = 4
         self.radius = 7
         pygame.draw.circle(self.image, WHITE, self.rect.center, self.radius, 2)
+        self.powerdown_started = False
+        self.powerdown_start = 0
+
+    def powerdown(self):
+        self.powerdown_start = pygame.time.get_ticks()
+        self.powerdown_started = True
 
     def update(self):
+        # first thing to check is to see if nubmer was negative, so when speed is chenged it stays on same direction
+        if self.powerdown_started:
+            if self.speedx < 0:
+                self.speedx = -2
+            else:
+                self.speedx = 2
+
+            if self.speedy < 0:
+                self.speedy = -2
+            else:
+                self.speedy = 2
+
         self.rect.x += self.speedx
         self.rect.y += self.speedy
+
         if self.rect.top <= 0:
             self.speedy *= -1
         if self.rect.right > WIDTH:
@@ -128,10 +147,30 @@ class Ball(pygame.sprite.Sprite):
         if self.rect.left < 0:
             self.speedx *= -1
 
+        # powerup disappears after 4000 ticks or 4 seconds
+        if pygame.time.get_ticks() - self.powerdown_start > POWERUP_TIME:
+            if self.speedx < 0:
+                self.speedx = -4
+            else:
+                self.speedx = 4
+
+            if self.speedy < 0:
+                self.speedy = -4
+            else:
+                self.speedy = 4
+
+            self.powerdown_started = False
+
+
+
 class Powerup(pygame.sprite.Sprite):
     def __init__(self, center):
         pygame.sprite.Sprite.__init__(self)
-        self.image = powerup
+        self.powerup_type = random.choice(powerup_types)
+        if self.powerup_type == 'speedup':
+            self.image = powerup_speedup
+        elif self.powerup_type == 'slowdown':
+            self.image = powerdown_slowball
         self.image.set_colorkey(BLACK)
         self.rect = self.image.get_rect()
         self.rect.center = center
@@ -224,10 +263,13 @@ def game_loop():
             score += 1
             ball.speedy *= -1
 
-        # ball collision with powerup
+        # player collision with powerup
         hits = pygame.sprite.spritecollide(player, powerups, True, pygame.sprite.collide_circle)
         for hit in hits:
-            player.powerup()
+            if hit.powerup_type == 'speedup':
+                player.powerup()
+            elif hit.powerup_type == 'slowdown':
+                ball.powerdown()
         # empty sprite group is considered false
         if not enemies and ball.rect.top > 360:
             display_enemies(all_sprites, enemies)
@@ -255,14 +297,16 @@ paddle = pygame.image.load(path.join(img_dir, 'paddleBlu.png')).convert()
 blue_brick = pygame.image.load(path.join(img_dir,'element_blue_rectangle_glossy.png')).convert()
 yellow_brick = pygame.image.load(path.join(img_dir, 'element_yellow_rectangle_glossy.png')).convert()
 gray_brick = pygame.image.load(path.join(img_dir, 'element_grey_rectangle_glossy.png')).convert()
-powerup = pygame.image.load(path.join(img_dir, 'powerupYellow_bolt.png')).convert()
+powerup_speedup = pygame.image.load(path.join(img_dir, 'powerupYellow_bolt.png')).convert()
+powerdown_slowball = pygame.image.load(path.join(img_dir, 'powerupYellow_star.png')).convert()
 # 1, 2, 3 coresponds to brick lives
 enemies_imgs = [blue_brick, yellow_brick, gray_brick]
 enemies_types = [1, 2, 3]
+
+powerup_types = ['speedup', 'slowdown']
 #global variables of very importance
 score = 0
 running = True
 game_over = False
-
 game_loop()
 pygame.quit()
